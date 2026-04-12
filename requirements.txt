@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+yt-dlp
+youtube-transcript-api
+jinja2
+python-multipart
+
+# Test dependencies
+pytest
+httpx
+hypothesis
+pytest-asyncio

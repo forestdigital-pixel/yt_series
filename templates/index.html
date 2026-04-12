@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Channel URL Extractor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f0f;
+      color: #f1f1f1;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 720px; width: 100%; }
+    h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: #ff4444; }
+    form { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    input[type="text"] {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #1a1a1a;
+      color: #f1f1f1;
+      font-size: 1rem;
+    }
+    input[type="text"]:focus { outline: none; border-color: #ff4444; }
+    button {
+      padding: 0.6rem 1.2rem;
+      background: #ff4444;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:hover { background: #cc0000; }
+    .error { color: #ff6b6b; margin-bottom: 1rem; }
+    .count { color: #aaa; margin-bottom: 0.75rem; font-size: 0.9rem; }
+    .url-list { list-style: none; }
+    .url-list li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #222;
+      word-break: break-all;
+    }
+    .url-list a { color: #6cb4ee; text-decoration: none; }
+    .url-list a:hover { text-decoration: underline; }
+    .spinner { display: none; }
+    form.loading .spinner { display: inline-block; margin-left: 0.5rem; }
+    form.loading button { opacity: 0.6; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>&#9654; YouTube Channel URL Extractor</h1>
+    <form method="POST" id="extractForm">
+      <input
+        type="text"
+        name="channel_name"
+        placeholder="Enter channel name (e.g. MrBeast)"
+        value="{{ channel_name }}"
+        required
+        aria-label="YouTube channel name"
+      >
+      <button type="submit">Extract</button>
+      <span class="spinner" aria-hidden="true">⏳</span>
+    </form>
+
+    {% if error %}
+      <p class="error" role="alert">{{ error }}</p>
+    {% endif %}
+
+    {% if urls %}
+      <p class="count">Found {{ urls|length }} video(s)</p>
+      <ol class="url-list">
+        {% for url in urls %}
+          <li><a href="{{ url }}" target="_blank" rel="noopener">{{ url }}</a></li>
+        {% endfor %}
+      </ol>
+    {% endif %}
+  </div>
+
+  <script>
+    document.getElementById('extractForm').addEventListener('submit', function() {
+      this.classList.add('loading');
+    });
+  </script>
+</body>
+</html>
