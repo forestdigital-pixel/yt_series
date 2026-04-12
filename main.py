@@ -12,7 +12,8 @@ from youtube_transcript_api.proxies import WebshareProxyConfig
 app = FastAPI(title="YouTube Tools API")
 
 # --- Jinja2 Templates ---
-templates = Jinja2Templates(directory="templates")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 # --- Proxy Configuration ---
 PROXY_USERNAME = os.environ.get("PROXY_USERNAME", "")
