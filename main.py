@@ -141,8 +141,9 @@ def get_transcript(videoId: str, lang: str = "en"):
 @app.get("/")
 async def index_get(request: Request):
     return templates.TemplateResponse(
+        request,
         "index.html",
-        {"request": request, "urls": [], "error": None, "channel_name": ""},
+        {"urls": [], "error": None, "channel_name": ""},
     )
 
 
@@ -165,8 +166,9 @@ async def index_post(request: Request, channel_name: str = Form("")):
             error = "Request timed out. The channel may have too many videos."
 
     return templates.TemplateResponse(
+        request,
         "index.html",
-        {"request": request, "urls": urls, "error": error, "channel_name": channel_name},
+        {"urls": urls, "error": error, "channel_name": channel_name},
     )
 
 
