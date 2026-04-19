@@ -39,7 +39,7 @@ class TranscriptSegment(BaseModel):
 
 
 class TranscriptResponse(BaseModel):
-    videoId: str
+    video_id: str
     lang: str
     content: list[TranscriptSegment]
     message: str | None = None
@@ -108,6 +108,9 @@ MAX_RETRIES = 2
 RETRY_DELAY = 1  # seconds between retries
 
 
+ALLOWED_LANG_PREFIXES = ("en", "zh")
+
+
 @app.get("/api/transcript", response_model=TranscriptResponse)
 def get_transcript(videoId: str, lang: str = "en"):
     last_error = None
@@ -123,7 +126,24 @@ def get_transcript(videoId: str, lang: str = "en"):
 
             transcript_list = ytt.list(videoId)
 
-            fallback_langs = ["en", "zh", "zh-Hant", "zh-Hans", "zh-TW", "zh-CN", "ja", "ko"]
+            # Check if any English or Chinese transcript exists before wasting time
+            available = list(transcript_list)
+            has_allowed = any(
+                t.language_code.startswith(ALLOWED_LANG_PREFIXES)
+                for t in available
+            )
+            # Also check if any transcript is translatable to an allowed language
+            has_translatable = any(t.is_translatable for t in available)
+
+            if not has_allowed and not has_translatable:
+                return TranscriptResponse(
+                    video_id=videoId,
+                    lang=lang,
+                    content=[],
+                    message="No English or Chinese transcript available for this video",
+                )
+
+            fallback_langs = ["en", "zh", "zh-Hant", "zh-Hans", "zh-TW", "zh-CN"]
             try:
                 transcript = transcript_list.find_transcript([lang])
             except Exception:
@@ -147,7 +167,7 @@ def get_transcript(videoId: str, lang: str = "en"):
             fetched = transcript.fetch()
 
             return TranscriptResponse(
-                videoId=videoId,
+                video_id=videoId,
                 lang=transcript.language_code,
                 content=[
                     TranscriptSegment(text=item.text, start=item.start, dur=item.duration)
@@ -163,7 +183,7 @@ def get_transcript(videoId: str, lang: str = "en"):
             # No transcript available — return 200 with empty content and message
             if "No transcripts were found" in str(e) or "Could not retrieve a transcript" in str(e):
                 return TranscriptResponse(
-                    videoId=videoId,
+                    video_id=videoId,
                     lang=lang,
                     content=[],
                     message="Transcript not available for this video",
@@ -172,7 +192,7 @@ def get_transcript(videoId: str, lang: str = "en"):
 
     # Rate limited after all retries — return friendly response instead of error
     return TranscriptResponse(
-        videoId=videoId,
+        video_id=videoId,
         lang=lang,
         content=[],
         message="Rate limited by YouTube. Try again later.",
