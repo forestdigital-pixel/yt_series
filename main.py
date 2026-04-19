@@ -114,12 +114,14 @@ def get_transcript(videoId: str, lang: str = "en"):
 
         transcript_list = ytt.list(videoId)
 
+        fallback_langs = ["en", "zh-TW", "zh-CN", "ja", "ko"]
         try:
             transcript = transcript_list.find_transcript([lang])
         except Exception:
-            transcript = transcript_list.find_generated_transcript(
-                ["en", "zh-TW", "zh-CN", "ja", "ko"]
-            )
+            try:
+                transcript = transcript_list.find_transcript(fallback_langs)
+            except Exception:
+                transcript = transcript_list.find_generated_transcript(fallback_langs)
 
         fetched = transcript.fetch()
 
