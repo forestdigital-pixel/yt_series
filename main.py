@@ -104,8 +104,8 @@ async def api_extract(request: Request):
 
 # --- Transcript Scraper Endpoint ---
 
-MAX_RETRIES = 3
-RETRY_DELAY = 2  # seconds between retries
+MAX_RETRIES = 2
+RETRY_DELAY = 1  # seconds between retries
 
 
 @app.get("/api/transcript", response_model=TranscriptResponse)
