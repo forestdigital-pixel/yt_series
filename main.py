@@ -170,7 +170,13 @@ def get_transcript(videoId: str, lang: str = "en"):
                 )
             raise HTTPException(status_code=500, detail=str(e))
 
-    raise HTTPException(status_code=429, detail=f"Rate limited after {MAX_RETRIES} retries: {str(last_error)}")
+    # Rate limited after all retries — return friendly response instead of error
+    return TranscriptResponse(
+        videoId=videoId,
+        lang=lang,
+        content=[],
+        message="Rate limited by YouTube. Try again later.",
+    )
 
 
 # --- Web UI Routes ---
