@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -102,40 +103,53 @@ async def api_extract(request: Request):
 
 # --- Transcript Scraper Endpoint ---
 
+MAX_RETRIES = 3
+RETRY_DELAY = 2  # seconds between retries
+
+
 @app.get("/api/transcript", response_model=TranscriptResponse)
 def get_transcript(videoId: str, lang: str = "en"):
-    try:
-        ytt = YouTubeTranscriptApi(
-            proxy_config=WebshareProxyConfig(
-                proxy_username=PROXY_USERNAME,
-                proxy_password=PROXY_PASSWORD,
-            )
-        )
+    last_error = None
 
-        transcript_list = ytt.list(videoId)
-
-        fallback_langs = ["en", "zh-TW", "zh-CN", "ja", "ko"]
+    for attempt in range(MAX_RETRIES):
         try:
-            transcript = transcript_list.find_transcript([lang])
-        except Exception:
+            ytt = YouTubeTranscriptApi(
+                proxy_config=WebshareProxyConfig(
+                    proxy_username=PROXY_USERNAME,
+                    proxy_password=PROXY_PASSWORD,
+                )
+            )
+
+            transcript_list = ytt.list(videoId)
+
+            fallback_langs = ["en", "zh-TW", "zh-CN", "ja", "ko"]
             try:
-                transcript = transcript_list.find_transcript(fallback_langs)
+                transcript = transcript_list.find_transcript([lang])
             except Exception:
-                transcript = transcript_list.find_generated_transcript(fallback_langs)
+                try:
+                    transcript = transcript_list.find_transcript(fallback_langs)
+                except Exception:
+                    transcript = transcript_list.find_generated_transcript(fallback_langs)
 
-        fetched = transcript.fetch()
+            fetched = transcript.fetch()
 
-        return TranscriptResponse(
-            videoId=videoId,
-            lang=transcript.language_code,
-            content=[
-                TranscriptSegment(text=item.text, start=item.start, dur=item.duration)
-                for item in fetched
-            ],
-        )
+            return TranscriptResponse(
+                videoId=videoId,
+                lang=transcript.language_code,
+                content=[
+                    TranscriptSegment(text=item.text, start=item.start, dur=item.duration)
+                    for item in fetched
+                ],
+            )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        except Exception as e:
+            last_error = e
+            if "429" in str(e) or "too many" in str(e).lower():
+                time.sleep(RETRY_DELAY * (attempt + 1))
+                continue
+            raise HTTPException(status_code=500, detail=str(e))
+
+    raise HTTPException(status_code=429, detail=f"Rate limited after {MAX_RETRIES} retries: {str(last_error)}")
 
 
 # --- Web UI Routes ---
