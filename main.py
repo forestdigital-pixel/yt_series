@@ -42,6 +42,7 @@ class TranscriptResponse(BaseModel):
     videoId: str
     lang: str
     content: list[TranscriptSegment]
+    message: str | None = None
 
 
 class HealthResponse(BaseModel):
@@ -122,14 +123,26 @@ def get_transcript(videoId: str, lang: str = "en"):
 
             transcript_list = ytt.list(videoId)
 
-            fallback_langs = ["en", "zh-TW", "zh-CN", "ja", "ko"]
+            fallback_langs = ["en", "zh", "zh-Hant", "zh-Hans", "zh-TW", "zh-CN", "ja", "ko"]
             try:
                 transcript = transcript_list.find_transcript([lang])
             except Exception:
                 try:
                     transcript = transcript_list.find_transcript(fallback_langs)
                 except Exception:
-                    transcript = transcript_list.find_generated_transcript(fallback_langs)
+                    try:
+                        transcript = transcript_list.find_generated_transcript(fallback_langs)
+                    except Exception:
+                        # Last resort: find any translatable transcript and translate it
+                        available = list(transcript_list)
+                        translatable = [t for t in available if t.is_translatable]
+                        if translatable:
+                            transcript = translatable[0].translate(lang)
+                        else:
+                            # Nothing translatable, just grab whatever exists
+                            transcript = available[0] if available else None
+                            if transcript is None:
+                                raise
 
             fetched = transcript.fetch()
 
@@ -147,6 +160,14 @@ def get_transcript(videoId: str, lang: str = "en"):
             if "429" in str(e) or "too many" in str(e).lower():
                 time.sleep(RETRY_DELAY * (attempt + 1))
                 continue
+            # No transcript available — return 200 with empty content and message
+            if "No transcripts were found" in str(e) or "Could not retrieve a transcript" in str(e):
+                return TranscriptResponse(
+                    videoId=videoId,
+                    lang=lang,
+                    content=[],
+                    message="Transcript not available for this video",
+                )
             raise HTTPException(status_code=500, detail=str(e))
 
     raise HTTPException(status_code=429, detail=f"Rate limited after {MAX_RETRIES} retries: {str(last_error)}")
